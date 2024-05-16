@@ -30,6 +30,12 @@ _ = module_data_error.set(False)
 module_groups_data = reactive.value()
 semesters_data = reactive.value()
 
+required_credits_per_student_data = reactive.value()
+module_groups_data_mins = reactive.value()
+module_groups_data_maxs = reactive.value()
+semesters_data_mins = reactive.value()
+semesters_data_maxs = reactive.value()
+
 student_module_rankings = reactive.value()
 module_rankings_error = reactive.value()
 _ = module_rankings_error.set(False)
@@ -54,263 +60,260 @@ def create_error_modal(message: str):
 ui.include_css(Path(__file__).parent / "styles.css")
 
 
+
 @render.express
 def _():
-    with ui.navset_pill(id="tab"):
-
-        @render.express
-        def _():
-            with ui.navset_underline(id="tab"):
-                # ui.card_header("Input Data")
-
-                with ui.nav_panel(
-                    "Modules",
-                    icon=(
-                        icon_svg("check")
-                        if module_data.is_set() and not module_data_error.get() == True
-                        else (
-                            icon_svg("exclamation")
-                            if module_data_error.get() == True
-                            else None
-                        )
-                    ),
-                ):
-                    if not module_data.is_set():
-                        input_file_area(
-                            "modules_file",
-                            "Module data file",
-                            multiple=False,
-                            accept=ACCEPTED_FILETYPES,
-                        )
-                    else:
-                        with ui.card():
-                            ui.card_header("Module Constraints")
-
-                            ui.input_action_button(
-                                "reset_module_data",
-                                "Reset Module Data",
-                                icon=icon_svg("trash"),
-                            )
-
-                            with ui.card():
-                                ui.card_header("Required Credits Per Student")
-                                ui.input_numeric(
-                                    "required_credits_per_student",
-                                    "Required Credits Per Student",
-                                    1,
-                                    min=1,
-                                    max=1000,
-                                )
-
-                            with ui.layout_columns(col_widths=[6, 6]):
-                                with ui.card():
-                                    ui.card_header("Min Credits Per Module Group")
-                                    [
-                                        ui.input_numeric(
-                                            f"min_credits_module_group_{i}",
-                                            x,
-                                            1,
-                                            min=1,
-                                            max=1000,
-                                        )
-                                        for i, x in enumerate(module_groups_data())
-                                    ]
-                                with ui.card():
-                                    ui.card_header("Max Credits Per Module Group")
-                                    [
-                                        ui.input_numeric(
-                                            f"max_credits_module_group_{i}",
-                                            x,
-                                            1,
-                                            min=1,
-                                            max=1000,
-                                        )
-                                        for i, x in enumerate(module_groups_data())
-                                    ]
-
-                            with ui.layout_columns(col_widths=[6, 6]):
-                                with ui.card():
-                                    ui.card_header("Min Credits Per Semester")
-                                    [
-                                        ui.input_numeric(
-                                            f"min_credits_semester_{i}",
-                                            str(x),
-                                            1,
-                                            min=1,
-                                            max=1000,
-                                        )
-                                        for i, x in enumerate(semesters_data())
-                                    ]
-                                with ui.card():
-                                    ui.card_header("Max Credits Per Semester")
-                                    [
-                                        ui.input_numeric(
-                                            f"max_credits_semester_{i}",
-                                            str(x),
-                                            1,
-                                            min=1,
-                                            max=1000,
-                                        )
-                                        for i, x in enumerate(semesters_data())
-                                    ]
-
-                    # with ui.popover():
-                    #     icon("circle-info")
-                    #     "Spreadsheet containing module IDs, names, semesters, group names, and capacities"
-
-                with ui.nav_panel(
-                    "Rankings",
-                    icon=(
-                        icon_svg("check")
-                        if student_module_rankings.is_set()
-                        and not module_rankings_error.get() == True
-                        else (
-                            icon_svg("exclamation")
-                            if module_rankings_error.get() == True
-                            else None
-                        )
-                    ),
-                ):
-
-                    if not student_module_rankings.is_set():
-                        input_file_area(
-                            "student_module_rankings_file",
-                            "Student module rankings file",
-                            multiple=False,
-                            accept=ACCEPTED_FILETYPES,
-                        )
-                    else:
-                        with ui.card():
-                            ui.input_action_button(
-                                "reset_module_rankings_data",
-                                "Reset Module Rankings Data",
-                                icon=icon_svg("trash"),
-                            )
-
-                    # with ui.popover():
-                    #     icon("circle-info")
-                    #     "Spreadsheet containing student IDs, names, and (for each student) a within-group preference ranking for each module"
-
-                with ui.nav_panel(
-                    "Group Preferences",
-                    icon=(
-                        icon_svg("check")
-                        if student_group_preferences.is_set()
-                        and not student_group_preferences_error.get() == True
-                        else (
-                            icon_svg("exclamation")
-                            if student_group_preferences_error.get() == True
-                            else None
-                        )
-                    ),
-                ):
-                    if not student_group_preferences.is_set():
-                        input_file_area(
-                            "student_group_preferences_file",
-                            "Student module group preferences file",
-                            multiple=False,
-                            accept=ACCEPTED_FILETYPES,
-                        )
-                    else:
-                        with ui.card():
-                            ui.input_action_button(
-                                "reset_group_preferences_data",
-                                "Reset Group Preferences Data",
-                                icon=icon_svg("trash"),
-                            )
-                    # with ui.popover():
-                    #     icon("circle-info")
-                    #     "Spreadsheet containing student IDs, names, and (for each student) a preferred number of modules per group"
-
-                with ui.nav_panel(
-                    "Prior Allocations",
-                    icon=(
-                        icon_svg("check")
-                        if student_previous_module_allocations.is_set()
-                        and not student_previous_module_allocations_error.get() == True
-                        else (
-                            icon_svg("exclamation")
-                            if student_previous_module_allocations_error.get() == True
-                            else None
-                        )
-                    ),
-                ):
-                    if not student_previous_module_allocations.is_set():
-                        input_file_area(
-                            "student_previous_module_allocations_file",
-                            "Existing student module allocations file (Optional)",
-                            multiple=False,
-                            accept=ACCEPTED_FILETYPES,
-                        )
-                    else:
-                        with ui.card():
-                            ui.input_action_button(
-                                "reset_prior_allocations_data",
-                                "Reset Prior Allocations Data",
-                                icon=icon_svg("trash"),
-                            )
-
-                    # with ui.popover():
-                    #     icon("circle-info")
-                    #     "Spreadsheet containing a student_id column and columns for each module ID, with non-zero entries in columns to which each student (row) has been assigned"
-
-                ui.nav_spacer()
-
-                with ui.nav_panel("Allocation", icon=icon_svg("play")):
+    with ui.navset_underline(id="tab"):
+        # ui.card_header("Input Data")
+        
+        with ui.nav_panel(
+            "Modules",
+            icon=(
+                icon_svg("check")
+                if module_data.is_set() and not module_data_error.get() == True
+                else (
+                    icon_svg("exclamation")
+                    if module_data_error.get() == True
+                    else None
+                )
+            ),
+        ):
+                if not module_data.is_set():
+                    input_file_area(
+                        "modules_file",
+                        "Module data file",
+                        multiple=False,
+                        accept=ACCEPTED_FILETYPES,
+                    )
+                else:
                     with ui.card():
-                        ui.card_header("Module Assignment Results")
-                        with ui.layout_columns(col_widths=[3, 9]):
-                            with ui.card():
-                                ui.input_numeric(
-                                    "early_stop_number",
-                                    "Stop After N Modules Per Student",
-                                    3,
-                                    min=1,
-                                    max=100,
-                                )
-                                ui.input_checkbox(
-                                    "allow_lowest_preferences",
-                                    "Allow allocation of lowest preferences",
-                                    False,
-                                )
-                                ui.input_numeric(
-                                    "assignment_runs",
-                                    "Random Search Repetitions",
-                                    10,
-                                    min=1,
-                                    max=250,
-                                )
-                                ui.input_action_button("run", "Run Assignment")
+                        ui.card_header("Module Constraints")
 
-                                @render.ui
-                                def download_button():
-                                    return (
-                                        render.download(
-                                            download, filename="assigned_modules.zip"
-                                        )
-                                        if best_assignment_module_assigner_data.is_set()
-                                        else None
+                        ui.input_action_button(
+                            "reset_module_data",
+                            "Reset Module Data",
+                            icon=icon_svg("trash"),
+                        )
+
+                        with ui.card():
+                            ui.card_header("Required Credits Per Student")
+                            ui.input_numeric(
+                                "required_credits_per_student",
+                                "Required Credits Per Student",
+                                1,
+                                min=1,
+                                max=1000,
+                            )
+
+                        with ui.layout_columns(col_widths=[6, 6]):
+                            with ui.card():
+                                ui.card_header("Min Credits Per Module Group")
+                                [
+                                    ui.input_numeric(
+                                        f"min_credits_module_group_{i}",
+                                        x,
+                                        1,
+                                        min=1,
+                                        max=1000,
+                                    )
+                                    for i, x in enumerate(module_groups_data())
+                                ]
+                            with ui.card():
+                                ui.card_header("Max Credits Per Module Group")
+                                [
+                                    ui.input_numeric(
+                                        f"max_credits_module_group_{i}",
+                                        x,
+                                        1,
+                                        min=1,
+                                        max=1000,
+                                    )
+                                    for i, x in enumerate(module_groups_data())
+                                ]
+
+                        with ui.layout_columns(col_widths=[6, 6]):
+                            with ui.card():
+                                ui.card_header("Min Credits Per Semester")
+                                [
+                                    ui.input_numeric(
+                                        f"min_credits_semester_{i}",
+                                        str(x),
+                                        1,
+                                        min=1,
+                                        max=1000,
+                                    )
+                                    for i, x in enumerate(semesters_data())
+                                ]
+                            with ui.card():
+                                ui.card_header("Max Credits Per Semester")
+                                [
+                                    ui.input_numeric(
+                                        f"max_credits_semester_{i}",
+                                        str(x),
+                                        1,
+                                        min=1,
+                                        max=1000,
+                                    )
+                                    for i, x in enumerate(semesters_data())
+                                ]
+
+                # with ui.popover():
+                #     icon("circle-info")
+                #     "Spreadsheet containing module IDs, names, semesters, group names, and capacities"
+
+        with ui.nav_panel(
+            "Rankings",
+            icon=(
+                icon_svg("check")
+                if student_module_rankings.is_set()
+                and not module_rankings_error.get() == True
+                else (
+                    icon_svg("exclamation")
+                    if module_rankings_error.get() == True
+                    else None
+                )
+            ),
+        ):
+
+            if not student_module_rankings.is_set():
+                input_file_area(
+                    "student_module_rankings_file",
+                    "Student module rankings file",
+                    multiple=False,
+                    accept=ACCEPTED_FILETYPES,
+                )
+            else:
+                with ui.card():
+                    ui.input_action_button(
+                        "reset_module_rankings_data",
+                        "Reset Module Rankings Data",
+                        icon=icon_svg("trash"),
+                    )
+
+            # with ui.popover():
+            #     icon("circle-info")
+            #     "Spreadsheet containing student IDs, names, and (for each student) a within-group preference ranking for each module"
+
+        with ui.nav_panel(
+            "Group Preferences",
+            icon=(
+                icon_svg("check")
+                if student_group_preferences.is_set()
+                and not student_group_preferences_error.get() == True
+                else (
+                    icon_svg("exclamation")
+                    if student_group_preferences_error.get() == True
+                    else None
+                )
+            ),
+        ):
+            if not student_group_preferences.is_set():
+                input_file_area(
+                    "student_group_preferences_file",
+                    "Student module group preferences file",
+                    multiple=False,
+                    accept=ACCEPTED_FILETYPES,
+                )
+            else:
+                with ui.card():
+                    ui.input_action_button(
+                        "reset_group_preferences_data",
+                        "Reset Group Preferences Data",
+                        icon=icon_svg("trash"),
+                    )
+            # with ui.popover():
+            #     icon("circle-info")
+            #     "Spreadsheet containing student IDs, names, and (for each student) a preferred number of modules per group"
+
+        with ui.nav_panel(
+            "Prior Allocations",
+            icon=(
+                icon_svg("check")
+                if student_previous_module_allocations.is_set()
+                and not student_previous_module_allocations_error.get() == True
+                else (
+                    icon_svg("exclamation")
+                    if student_previous_module_allocations_error.get() == True
+                    else None
+                )
+            ),
+        ):
+            if not student_previous_module_allocations.is_set():
+                input_file_area(
+                    "student_previous_module_allocations_file",
+                    "Existing student module allocations file (Optional)",
+                    multiple=False,
+                    accept=ACCEPTED_FILETYPES,
+                )
+            else:
+                with ui.card():
+                    ui.input_action_button(
+                        "reset_prior_allocations_data",
+                        "Reset Prior Allocations Data",
+                        icon=icon_svg("trash"),
+                    )
+
+            # with ui.popover():
+            #     icon("circle-info")
+            #     "Spreadsheet containing a student_id column and columns for each module ID, with non-zero entries in columns to which each student (row) has been assigned"
+
+        ui.nav_spacer()
+
+        with ui.nav_panel("Allocation", icon=icon_svg("play")):
+            with ui.card():
+                ui.card_header("Module Assignment Results")
+                with ui.layout_columns(col_widths=[3, 9]):
+                    with ui.card():
+                        ui.input_numeric(
+                            "early_stop_number",
+                            "Stop After N Modules Per Student",
+                            3,
+                            min=1,
+                            max=100,
+                        )
+                        ui.input_checkbox(
+                            "allow_lowest_preferences",
+                            "Allow allocation of lowest preferences",
+                            False,
+                        )
+                        ui.input_numeric(
+                            "assignment_runs",
+                            "Random Search Repetitions",
+                            10,
+                            min=1,
+                            max=250,
+                        )
+                        ui.input_action_button("run", "Run Assignment")
+
+                        @render.ui
+                        def download_button():
+                            return (
+                                render.download(
+                                    download, filename="assigned_modules.zip"
+                                )
+                                if best_assignment_module_assigner_data.is_set()
+                                else None
+                            )
+
+                    with ui.card():
+                        with ui.navset_pill(
+                            id="module_assignment_results_tabset"
+                        ):
+                            with ui.nav_panel("Assigned Modules"):
+
+                                @render.data_frame
+                                def assignment_df():
+                                    return render.DataGrid(
+                                        best_assignment_data.get()
                                     )
 
-                            with ui.card():
-                                with ui.navset_pill(
-                                    id="module_assignment_results_tabset"
-                                ):
-                                    with ui.nav_panel("Assigned Modules"):
+                            with ui.nav_panel("Over-Requested Modules"):
 
-                                        @render.data_frame
-                                        def assignment_df():
-                                            return render.DataGrid(
-                                                best_assignment_data.get()
-                                            )
-
-                                    with ui.nav_panel("Over-Requested Modules"):
-
-                                        @render.data_frame
-                                        def excess_module_requests_df():
-                                            return render.DataGrid(
-                                                excess_module_requests_data.get()
-                                            )
+                                @render.data_frame
+                                def excess_module_requests_df():
+                                    return render.DataGrid(
+                                        excess_module_requests_data.get()
+                                    )
 
 
 def load_student_data():
@@ -367,6 +370,7 @@ def _():
 @reactive.effect
 @reactive.event(input.modules_file)
 def file_content():
+    persist_module_allocation_settings()
     modules_file_info = input.modules_file()[0]
     if not modules_file_info:
         return
@@ -392,6 +396,7 @@ def file_content():
         module_groups_data.set(module_groups)
         semesters_data.set(semesters)
         module_data_error.set(False)
+        reload_module_allocation_settings()
     except Exception as e:
         print(e)
         ui.modal_show(
@@ -404,6 +409,7 @@ def file_content():
 @reactive.effect
 @reactive.event(input.student_module_rankings_file)
 def file_content():
+    persist_module_allocation_settings()
     student_module_rankings_file_info = input.student_module_rankings_file()[0]
     if not student_module_rankings_file_info:
         return
@@ -423,6 +429,7 @@ def file_content():
         if student_group_preferences.is_set() and module_data.is_set():
             load_student_data()
         module_rankings_error.set(False)
+        reload_module_allocation_settings()
     except Exception as e:
         print(e)
         ui.modal_show(
@@ -435,6 +442,7 @@ def file_content():
 @reactive.effect
 @reactive.event(input.student_group_preferences_file)
 def file_content():
+    persist_module_allocation_settings()
     student_group_preferences_file_info = input.student_group_preferences_file()[0]
     if not student_group_preferences_file_info:
         return
@@ -454,6 +462,7 @@ def file_content():
         if student_module_rankings.is_set() and module_data.is_set():
             load_student_data()
         student_group_preferences_error.set(False)
+        reload_module_allocation_settings()
     except Exception as e:
         print(e)
         ui.modal_show(
@@ -466,6 +475,8 @@ def file_content():
 @reactive.effect
 @reactive.event(input.student_previous_module_allocations_file)
 def file_content():
+
+    persist_module_allocation_settings()
 
     student_previous_module_allocations_file_info = (
         input.student_previous_module_allocations_file()[0]
@@ -486,6 +497,7 @@ def file_content():
             return
         student_previous_module_allocations.set(student_previous_assignments_data)
         student_previous_module_allocations_error.set(False)
+        reload_module_allocation_settings()
     except Exception as e:
         print(e)
         ui.modal_show(
@@ -603,6 +615,54 @@ def download():
             zf.writestr(f"module_metadata.csv", b_module_allocation_state.getvalue())
 
         yield zip_file.getvalue()
+
+
+def persist_module_allocation_settings():
+    """Store the manually inputted module allocation settings, so that we can restore
+    them when the UI changes.
+    """
+    if module_data.is_set():
+        required_credits_per_student_data.set(input.required_credits_per_student.get())
+        module_groups_data_maxs.set([
+                        input[f"max_credits_module_group_{i}"].get()
+                        for i, _ in enumerate(module_groups_data())
+                    ])
+        module_groups_data_mins.set([
+                        input[f"min_credits_module_group_{i}"].get()
+                        for i, _ in enumerate(module_groups_data())
+                    ])
+        semesters_data_maxs.set([
+                        input[f"max_credits_semester_{i}"].get()
+                        for i, _ in enumerate(semesters_data())
+                    ])
+        semesters_data_mins.set([
+                        input[f"min_credits_semester_{i}"].get()
+                        for i, _ in enumerate(semesters_data())
+                    ])
+
+def reload_module_allocation_settings():
+    """Insert the stored module allocation settings back into the UI
+    """
+    if module_data.is_set():
+        if required_credits_per_student_data.is_set():
+            ui.update_numeric(f"required_credits_per_student", value=required_credits_per_student_data.get())
+
+        if module_groups_data_maxs.is_set():
+            for i, _ in enumerate(module_groups_data()):
+                ui.update_numeric(f"max_credits_module_group_{i}", value=module_groups_data_maxs.get()[i])
+
+        if module_groups_data_mins.is_set():
+            for i, _ in enumerate(module_groups_data()):
+                ui.update_numeric(f"min_credits_module_group_{i}", value=module_groups_data_mins.get()[i])
+
+        if semesters_data_maxs.is_set():
+            for i, _ in enumerate(semesters_data()):
+                ui.update_numeric(f"max_credits_semester_{i}", value=semesters_data_maxs.get()[i])
+
+        if semesters_data_mins.is_set():
+            for i, _ in enumerate(semesters_data()):
+                ui.update_numeric(f"min_credits_semester_{i}", value=semesters_data_mins.get()[i])
+        
 
 
 def run_assignments(
