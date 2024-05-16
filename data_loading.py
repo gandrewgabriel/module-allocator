@@ -13,10 +13,10 @@ def validate_module_data(data:pd.DataFrame):
     return errors 
 
 def load_module_data(filepath:Path):
-    """Load the module data from a given excel file
+    """Load the module data from a given csv file
 
     Args:
-        filepath (Path): Path to the excel file containing module data
+        filepath (Path): Path to the csv file containing module data
 
     Returns:
         (list[Module], list[str], list[str], set, set): A list of loaded 
@@ -25,7 +25,7 @@ def load_module_data(filepath:Path):
         loaded modules list, a set containing the IDs of any mutually 
         excluded modules not found in the loaded modules list
     """
-    module_data = pd.read_excel(filepath)
+    module_data = pd.read_csv(filepath)
     return module_data
 
 def get_formatted_module_data(module_data:pd.DataFrame):
@@ -99,29 +99,35 @@ def validate_module_group_preferences_data(data:pd.DataFrame):
     return errors 
 
 def load_module_rankings_data(module_preference_data_filepath:Path):
-    return pd.read_excel(module_preference_data_filepath)
+    return pd.read_csv(module_preference_data_filepath)
 
 def load_module_group_preferences_data(module_group_preference_data_filepath:Path):
-    return pd.read_excel(module_group_preference_data_filepath)
+    return pd.read_csv(module_group_preference_data_filepath)
 
 def load_students(module_rankings_data:pd.DataFrame, module_group_preference_data:pd.DataFrame, modules:list[Module]):
-    """Load the student preferences data from two excel files
+    """Load the student preferences data from two csv files
 
     Args:
-        module_preference_data_filepath (Path): Path to the excel file containing module preference rankings
-        module_group_preference_data_filepath (Path): Path to the excel file containing preferred numbers of modules per group
+        module_preference_data_filepath (Path): Path to the csv file containing module preference rankings
+        module_group_preference_data_filepath (Path): Path to the csv file containing preferred numbers of modules per group
         modules (list[Module]): List of Module objects
 
     Returns:
         (list[Student], list[Student], list[Student], list[str]): A list of loaded Student objects, a list of students who did 
         not rank every module, a list of students with missing IDs, a list of module IDs not ranked by the students
     """
-    # Load the excel files
+    # Load the csv files
 
     loaded_student_module_group_preferences:dict[str, dict[str, int]] = dict()
     loaded_students:dict[str, Student] = dict()
 
-    student_to_uid = lambda r: f"{r.student_name.lower().strip().replace(" ", "")}_{r.student_id.strip().replace(" ", "")}" if not pd.isna(r.student_id) else f"{r.student_name.lower().strip().replace(" ", "")}_"
+    def student_to_uid(r):
+        n = r.student_name.lower().strip().replace(" ", "")
+        i = r.student_id.strip().replace(" ", "")
+        if not pd.isna(r.student_id):
+            return f"{n}_{i}"
+        else:
+            return f"{n}_"
 
     # Keep track of any students who don't have rankings for all modules
     students_missing_ranks = []
@@ -162,7 +168,7 @@ def load_students(module_rankings_data:pd.DataFrame, module_group_preference_dat
     return list(loaded_students.values()), students_missing_ranks, students_missing_ids, missing_modules
 
 def load_module_assignments(module_assignments_data_filepath:Path):
-    module_assignments_data = pd.read_excel(module_assignments_data_filepath)
+    module_assignments_data = pd.read_csv(module_assignments_data_filepath)
     return module_assignments_data
 
 def validate_module_assignments_data(data:pd.DataFrame):

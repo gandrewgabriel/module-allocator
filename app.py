@@ -22,7 +22,7 @@ from io import BytesIO
 from faicons import icon_svg
 
 MAX_SIZE = 50000
-ACCEPTED_FILETYPES = [".xls", ".xlsx", ".xlsm", ".xlsb", ".odf", ".ods", ".odt"]
+ACCEPTED_FILETYPES = [".csv"]
 
 module_data = reactive.value()
 module_data_error = reactive.value()
@@ -325,7 +325,8 @@ def load_student_data():
         )
         student_data.set(students)
         print(student_data.get())
-    except:
+    except Exception as e:
+        print(e)
         ui.modal_show(
             create_error_modal(
                 "There was an error loading data from the student module preference files. Please ensure their content is in the correct format and try again."
@@ -391,7 +392,8 @@ def file_content():
         module_groups_data.set(module_groups)
         semesters_data.set(semesters)
         module_data_error.set(False)
-    except:
+    except Exception as e:
+        print(e)
         ui.modal_show(
             create_error_modal(
                 "There was an error loading data from the module file. Please ensure its content is in the correct format and try again."
@@ -421,7 +423,8 @@ def file_content():
         if student_group_preferences.is_set() and module_data.is_set():
             load_student_data()
         module_rankings_error.set(False)
-    except:
+    except Exception as e:
+        print(e)
         ui.modal_show(
             create_error_modal(
                 "There was an error loading data from the module rankings file. Please ensure its content is in the correct format and try again."
@@ -451,7 +454,8 @@ def file_content():
         if student_module_rankings.is_set() and module_data.is_set():
             load_student_data()
         student_group_preferences_error.set(False)
-    except:
+    except Exception as e:
+        print(e)
         ui.modal_show(
             create_error_modal(
                 "There was an error loading data from the module group preferences file. Please ensure its content is in the correct format and try again."
@@ -482,7 +486,8 @@ def file_content():
             return
         student_previous_module_allocations.set(student_previous_assignments_data)
         student_previous_module_allocations_error.set(False)
-    except:
+    except Exception as e:
+        print(e)
         ui.modal_show(
             create_error_modal(
                 "There was an error loading data from the previous module assignments file. Please ensure its content is in the correct format and try again."
@@ -566,36 +571,36 @@ def download():
         )
         zip_file = BytesIO()
         with ZipFile(zip_file, "w") as zf:
-            # Write the excel files containing student IDs assigned to each module
+            # Write the csv files containing student IDs assigned to each module
             for m_idx, m in enumerate(module_ids):
                 b = BytesIO()
-                assigned_students_data[m_idx].to_excel(b, index=False, header=True)
-                zf.writestr(f"{m}.xlsx", b.getvalue())
+                assigned_students_data[m_idx].to_csv(b, index=False, header=True)
+                zf.writestr(f"{m}.csv", b.getvalue())
 
-            # Write the summary of all module assignments for all students to an excel file
+            # Write the summary of all module assignments for all students to an csv file
             b_assignment_summary = BytesIO()
-            best_assignment_data.get().to_excel(
+            best_assignment_data.get().to_csv(
                 b_assignment_summary, index=False, header=True
             )
             zf.writestr(
-                f"module_assignment_summary.xlsx", b_assignment_summary.getvalue()
+                f"module_assignment_summary.csv", b_assignment_summary.getvalue()
             )
 
-            # Write data on excess module requests to an excel file
+            # Write data on excess module requests to an csv file
             b_over_requested_modules = BytesIO()
-            excess_module_requests_data.get().to_excel(
+            excess_module_requests_data.get().to_csv(
                 b_over_requested_modules, index=False, header=True
             )
             zf.writestr(
-                f"excess_module_requests.xlsx", b_over_requested_modules.getvalue()
+                f"excess_module_requests.csv", b_over_requested_modules.getvalue()
             )
 
-            # Write the list of modules and associated metadata (including remaining spaces on each module) back to an excel file
+            # Write the list of modules and associated metadata (including remaining spaces on each module) back to an csv file
             b_module_allocation_state = BytesIO()
-            module_allocation_state_data.get().to_excel(
+            module_allocation_state_data.get().to_csv(
                 b_module_allocation_state, index=False, header=True
             )
-            zf.writestr(f"module_metadata.xlsx", b_module_allocation_state.getvalue())
+            zf.writestr(f"module_metadata.csv", b_module_allocation_state.getvalue())
 
         yield zip_file.getvalue()
 
