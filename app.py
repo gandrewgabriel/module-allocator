@@ -21,6 +21,8 @@ from data_loading import (
 from io import BytesIO
 from faicons import icon_svg
 
+APP_VERSION = "0.0.1"
+
 MAX_SIZE = 50000
 ACCEPTED_FILETYPES = [".csv"]
 
@@ -58,11 +60,12 @@ def create_error_modal(message: str):
 
 
 ui.include_css(Path(__file__).parent / "styles.css")
-
-
+ui.head_content(ui.tags.title(f"Module Allocator {APP_VERSION}"))
 
 @render.express
 def _():
+    ui.panel_title(f"Module Allocator {APP_VERSION}")
+
     with ui.navset_underline(id="tab"):
         # ui.card_header("Input Data")
         
