@@ -83,7 +83,7 @@ def get_formatted_module_data(module_data:pd.DataFrame):
     # Add mutual exclusion and requirement references between the module objects
     for _, r in module_data.iterrows():    
         if not pd.isna(r.mutually_excluded_modules):
-            mutually_excluded_module_ids = [s.strip() for s in r.mutually_excluded_modules.split(",") if len(s.strip()) > 0]
+            mutually_excluded_module_ids = [str(s).strip() for s in r.mutually_excluded_modules.split(",") if len(str(s).strip()) > 0]
             for m in mutually_excluded_module_ids:
                 if m in loaded_modules.keys():  
                     loaded_modules[r.module_id].add_mutual_exclusions([loaded_modules[m]])
@@ -91,7 +91,7 @@ def get_formatted_module_data(module_data:pd.DataFrame):
                     mutually_excluded_modules_not_found.add(m)
 
         if not pd.isna(r.required_modules):
-            required_module_ids = [s.strip() for s in r.required_modules.split(",") if len(s.strip()) > 0]
+            required_module_ids = [str(s).strip() for s in r.required_modules.split(",") if len(str(s).strip()) > 0]
             for m in required_module_ids:
                 if m in loaded_modules.keys(): 
                     loaded_modules[r.module_id].add_requirements([loaded_modules[m]])
@@ -155,8 +155,8 @@ def load_students(module_rankings_data:pd.DataFrame, module_group_preference_dat
     loaded_students:dict[str, Student] = dict()
 
     def student_to_uid(r):
-        n = r.student_name.lower().strip().replace(" ", "")
-        i = r.student_id.strip().replace(" ", "")
+        n = str(r.student_name).lower().strip().replace(" ", "")
+        i = str(r.student_id).strip().replace(" ", "")
         if not pd.isna(r.student_id):
             return f"{n}_{i}"
         else:
@@ -189,7 +189,7 @@ def load_students(module_rankings_data:pd.DataFrame, module_group_preference_dat
         if pd.isna(r.student_id):
             students_missing_ids.append(r.student_name)
             student_id = r.student_name
-        s = Student(r.student_name, student_id.strip(), loaded_student_module_group_preferences[student_uid], module_rankings, excluded_modules)
+        s = Student(r.student_name, str(student_id).strip(), loaded_student_module_group_preferences[student_uid], module_rankings, excluded_modules)
         loaded_students[student_uid] = s
 
         if not all_modules_are_ranked:
