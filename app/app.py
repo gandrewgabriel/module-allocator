@@ -8,6 +8,7 @@ from shiny import reactive
 from algorithm import ModuleAssigner
 from custom_widgets import input_file_area
 from data_loading import (
+    check_ranking_and_group_ids_match,
     get_formatted_module_data,
     load_module_assignments,
     load_module_data,
@@ -322,6 +323,24 @@ def _():
 def load_student_data():
     student_data.set(None)
     try:
+
+        missing_from_rankings, missing_from_group_prefs = check_ranking_and_group_ids_match(student_module_rankings.get(), student_group_preferences.get())
+
+        if len(missing_from_rankings) > 0:
+            ui.modal_show(
+                    create_error_modal("\n".join([f"<p>Student ID '{str(e)}' is present in the Group Preferences file, but missing from the Rankings file</p>" for e in missing_from_rankings]))
+                )
+            reset_module_rankings_data()            
+            
+        if len(missing_from_group_prefs) > 0:
+            ui.modal_show(
+                    create_error_modal("\n".join([f"<p>Student ID '{str(e)}' is present in the Rankings file, but missing from the Group Preferences file</p>" for e in missing_from_group_prefs]))
+                )            
+            reset_group_preferences_data()
+        
+        if len(missing_from_rankings) > 0 or len(missing_from_group_prefs) > 0:
+            return
+
         students, students_missing_ranks, students_missing_ids, missing_modules = (
             load_students(
                 student_module_rankings.get(),
@@ -331,6 +350,21 @@ def load_student_data():
         )
         student_data.set(students)
         print(student_data.get())
+
+        errors = []
+
+        for m in missing_modules:
+            errors += [f"Module '{m}' is missing from the Rankings file"]
+
+        for s in students_missing_ranks:
+            errors += [f"Student with ID '{s}' is has module preference rankings missing in the Rankings file"]
+       
+        if len(errors) > 0:
+            reset_module_rankings_data()            
+            ui.modal_show(create_error_modal("\n".join([f"<p>{e}</p>" for e in errors])))
+            return
+            
+
     except Exception as e:
         print(e)
         ui.modal_show(
@@ -350,16 +384,22 @@ def _():
 @reactive.effect
 @reactive.event(input.reset_group_preferences_data)
 def _():
+    reset_module_rankings_data()
+def reset_group_preferences_data():
     student_group_preferences.set(None)
     student_group_preferences.unset()
+    student_group_preferences_error.set(False)
     student_data.unset()
 
 
 @reactive.effect
 @reactive.event(input.reset_module_rankings_data)
 def _():
+    reset_module_rankings_data()
+def reset_module_rankings_data():
     student_module_rankings.set(None)
     student_module_rankings.unset()
+    module_rankings_error.set(False)
     student_data.unset()
 
 

@@ -137,6 +137,20 @@ def load_module_rankings_data(module_preference_data_filepath:Path):
 def load_module_group_preferences_data(module_group_preference_data_filepath:Path):
     return pd.read_csv(module_group_preference_data_filepath, encoding="utf-8", encoding_errors="replace")
 
+
+
+def check_ranking_and_group_ids_match(module_rankings_data:pd.DataFrame, module_group_preference_data:pd.DataFrame):
+    def find_non_matched_ids(dataframe1:pd.DataFrame, dataframe2:pd.DataFrame):
+        ids_in_dataframe1 = set([str(s) for s in dataframe1['student_id']])
+        ids_in_dataframe2 = set([str(s) for s in dataframe2['student_id']])
+        missing_from_2 = ids_in_dataframe1 - ids_in_dataframe2
+        missing_from_1 = ids_in_dataframe2 - ids_in_dataframe1
+        return missing_from_1, missing_from_2
+
+    m1, m2 = find_non_matched_ids(module_rankings_data, module_group_preference_data)
+
+    return m1, m2
+
 def load_students(module_rankings_data:pd.DataFrame, module_group_preference_data:pd.DataFrame, modules:list[Module]):
     """Load the student preferences data from two csv files
 
@@ -149,7 +163,7 @@ def load_students(module_rankings_data:pd.DataFrame, module_group_preference_dat
         (list[Student], list[Student], list[Student], list[str]): A list of loaded Student objects, a list of students who did 
         not rank every module, a list of students with missing IDs, a list of module IDs not ranked by the students
     """
-    # Load the csv files
+      
 
     loaded_student_module_group_preferences:dict[str, dict[str, int]] = dict()
     loaded_students:dict[str, Student] = dict()
@@ -190,7 +204,7 @@ def load_students(module_rankings_data:pd.DataFrame, module_group_preference_dat
             students_missing_ids.append(r.student_name)
             student_id = r.student_name
         s = Student(r.student_name, str(student_id).strip(), loaded_student_module_group_preferences[student_uid], module_rankings, excluded_modules)
-        loaded_students[student_uid] = s
+        loaded_students[student_uid] = s        
 
         if not all_modules_are_ranked:
             students_missing_ranks.append(r.student_id)
