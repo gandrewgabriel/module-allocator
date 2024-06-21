@@ -1,0 +1,15 @@
+name: module-allocator
+channels:
+  - conda-forge
+dependencies:
+  - ipykernel
+  - python
+  - numpy
+  - ca-certificates
+  - openssl
+  - matplotlib
+  - pandas
+  - certifi
+  - openpyxl
+  - shiny
+  - ghp-import

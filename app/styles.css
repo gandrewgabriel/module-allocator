@@ -1,0 +1,66 @@
+.upload-button {
+  align-items: center;
+  text-align: center;
+  justify-content: center;
+  border-style: solid;
+  border-color: #e9ebec;
+  border-width: 2px;
+  border-radius: 20px;
+  width: 100%;
+  height: 100%;
+}
+
+.file-upload-input-group {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 1px;
+  margin: 1px;
+  min-height: 100px
+}
+
+.shiny-file-input-active {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.shiny-file-input-over {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.shiny-file-input-active.shiny-file-input-over .upload-button {
+  border-color: #848f99;
+  border-style: solid;
+}
+
+.upload-button:hover {
+  border-color: #848f99;
+  border-style: solid;
+}
+
+.progress {
+  height: 32px;
+}
+
+.progress .progress-bar {
+  font-size: 16px;
+  line-height: 28px;
+}
+
+.input-group-btn {
+  width: 100%;
+}
+
+.input-group {
+  width: 100%;
+  flex-grow: 4;
+}
+
+.upload_icon {
+  display: inline-block;
+  font-size: 32px;
+  width: 32px;
+  height: 32px;
+  margin: 32px;
+}
