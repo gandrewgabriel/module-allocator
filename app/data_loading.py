@@ -8,7 +8,7 @@ from algorithm import Module, ModuleAssigner, Student
 
 # Check if any item in any row contains the replacement character
 def check_for_replacement_char(row):
-    replacement_char = '�'
+    replacement_char = u'\ufffd'
     for idx, cell in enumerate(row):
         if replacement_char in str(cell):
             return True, idx
@@ -25,7 +25,7 @@ def get_replacement_character_error_messages(df:pd.DataFrame):
     if len(replacement_character_indices) > 0:
         errors += ["Unrecognised characters were found in this data file. Please edit the file to remove these characters and try again."]
     for r, c in replacement_character_indices:
-        errors += [f"The item in row {r+1}, column {c+1} contains unrecognised characters."]
+        errors += [f"The item in row {r+1}, column {c+1} contains unrecognised characters: '{df.iloc[r, c]}'"]
     return errors
 
 
@@ -53,7 +53,7 @@ def load_module_data(filepath:Path):
         loaded modules list, a set containing the IDs of any mutually 
         excluded modules not found in the loaded modules list
     """
-    module_data = pd.read_csv(filepath, encoding_errors="replace")
+    module_data = pd.read_csv(filepath, encoding="utf-8", encoding_errors="replace")
     print(module_data)
     return module_data
 
@@ -132,10 +132,10 @@ def validate_module_group_preferences_data(data:pd.DataFrame):
     return errors 
 
 def load_module_rankings_data(module_preference_data_filepath:Path):
-    return pd.read_csv(module_preference_data_filepath, encoding_errors="replace")
+    return pd.read_csv(module_preference_data_filepath, encoding="utf-8", encoding_errors="replace")
 
 def load_module_group_preferences_data(module_group_preference_data_filepath:Path):
-    return pd.read_csv(module_group_preference_data_filepath, encoding_errors="replace")
+    return pd.read_csv(module_group_preference_data_filepath, encoding="utf-8", encoding_errors="replace")
 
 def load_students(module_rankings_data:pd.DataFrame, module_group_preference_data:pd.DataFrame, modules:list[Module]):
     """Load the student preferences data from two csv files
@@ -201,7 +201,7 @@ def load_students(module_rankings_data:pd.DataFrame, module_group_preference_dat
     return list(loaded_students.values()), students_missing_ranks, students_missing_ids, missing_modules
 
 def load_module_assignments(module_assignments_data_filepath:Path):
-    module_assignments_data = pd.read_csv(module_assignments_data_filepath, encoding_errors="replace")
+    module_assignments_data = pd.read_csv(module_assignments_data_filepath, encoding="utf-8", encoding_errors="replace")
     return module_assignments_data
 
 def validate_module_assignments_data(data:pd.DataFrame):
