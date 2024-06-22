@@ -22,7 +22,7 @@ from data_loading import (
 from io import BytesIO
 from faicons import icon_svg
 
-APP_VERSION = "0.1.1"
+APP_VERSION = "0.1.2"
 
 BASE_RANDOM_SEED = 8194761
 
@@ -812,19 +812,24 @@ def run_assignments(
                 0
             ].get_assignment_satisfaction_scores()
 
-            previous_mean_score = np.mean(previous_scores)
-            current_mean_score = np.mean(current_scores)
-            # previous_min_score = np.min(previous_scores)
-            # current_min_score = np.min(current_scores)
+            previous_overallocation = best_assignment.get_excess_module_requests()
+            current_overallocation = successful_assignments[
+                0
+            ].get_excess_module_requests()
+
+            previous_overallocation_mean = previous_overallocation["proportion_overrequested"].mean()
+            current_overallocation_mean = current_overallocation["proportion_overrequested"].mean()
+
+            previous_mean_score = np.nanmean(previous_scores)
+            current_mean_score = np.nanmean(current_scores)
 
             best_assignment = (
                 successful_assignments[0]
                 if (current_mean_score >= previous_mean_score)
                 else best_assignment
             )
-            if (current_mean_score >= previous_mean_score):
-                print(
-                    f"Updated best assignment {repetition} {previous_mean_score} {current_mean_score}"
-                )
-
+            if (current_mean_score >= previous_mean_score) and (current_overallocation_mean <= previous_overallocation_mean):
+                best_assignment = successful_assignments[0]
+                print(f"Updated best assignment {repetition} {previous_mean_score} {current_mean_score}")
+            print(current_mean_score, previous_mean_score, current_overallocation_mean, previous_overallocation_mean)
     return best_assignment
