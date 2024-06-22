@@ -264,9 +264,12 @@ class ModuleAssigner:
 
         # Which module group is furthest from satisfying the students' preferred number of credits for that group
         next_assignment_group_idxs = np.argsort(assigned_credits_total - self._student_module_group_credit_preferences, axis=1)
-
+       
         # Select a random order in which to let students "pick" a module
         choice_order = self._rs.permutation(self._n_students)
+
+        # self.log(assigned_credits_total)
+        # self.log("|||||")
 
         # Keep track of which modules each student has already "requested" during allocation
         requested_modules = dict(zip(self._students, [[] for _ in self._students]))
@@ -341,33 +344,33 @@ class ModuleAssigner:
                                     self._module_spaces_excess_requests[m] = self._module_spaces_excess_requests[m] + 1
                                     requested_modules[self._students[student_idx]] = requested_modules[self._students[student_idx]] + [m]
 
-                            if not modules_have_space_remaining:
-                                self.log("Assignment pass failed: Requested modules have no spaces remaining")
-                                continue
+                            # if not modules_have_space_remaining:
+                            #     self.log("Assignment pass failed: Requested modules have no spaces remaining")
+                            #     continue
 
-                            if not modules_not_excluded:
-                                self.log("Assignment pass failed: Mutually excluded modules were requested")
-                                continue
+                            # if not modules_not_excluded:
+                            #     self.log("Assignment pass failed: Mutually excluded modules were requested")
+                            #     continue
 
-                            if not modules_not_excluded_by_student:
-                                self.log("Assignment pass failed: Student excluded modules were requested")
-                                continue
+                            # if not modules_not_excluded_by_student:
+                            #     self.log("Assignment pass failed: Student excluded modules were requested")
+                            #     continue
 
-                            if not requested_credits_not_too_many_per_group:
-                                self.log("Assignment pass failed: Requested modules exceeded per group credit maximum")
-                                continue
+                            # if not requested_credits_not_too_many_per_group:
+                            #     self.log("Assignment pass failed: Requested modules exceeded per group credit maximum")
+                            #     continue
 
-                            if not requested_credits_not_too_many_total:
-                                self.log("Assignment pass failed: Requested modules exceeded total credit maximum")
-                                continue
+                            # if not requested_credits_not_too_many_total:
+                            #     self.log("Assignment pass failed: Requested modules exceeded total credit maximum")
+                            #     continue
 
-                            if not requested_credits_per_semester_not_too_many:
-                                self.log("Assignment pass failed: Requested modules exceeded per semester credit maximum")
-                                continue
+                            # if not requested_credits_per_semester_not_too_many:
+                            #     self.log("Assignment pass failed: Requested modules exceeded per semester credit maximum")
+                            #     continue
 
-                            if not preferences_okay:
-                                self.log("Assignment pass failed: Requested modules included lowest-ranked module for the current student")
-                                continue
+                            # if not preferences_okay:
+                            #     self.log("Assignment pass failed: Requested modules included lowest-ranked module for the current student")
+                            #     continue
 
 
                             # Assign the module and its requirements to the student
