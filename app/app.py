@@ -9,6 +9,7 @@ from algorithm import ModuleAssigner
 from custom_widgets import input_file_area
 from data_loading import (
     check_ranking_and_group_ids_match,
+    check_sufficient_module_spaces,
     get_formatted_module_data,
     load_module_assignments,
     load_module_data,
@@ -22,7 +23,7 @@ from data_loading import (
 from io import BytesIO
 from faicons import icon_svg
 
-APP_VERSION = "0.1.2"
+APP_VERSION = "0.1.4"
 
 BASE_RANDOM_SEED = 8194761
 
@@ -30,6 +31,7 @@ MAX_SIZE = 50000
 ACCEPTED_FILETYPES = [".csv"]
 
 module_data = reactive.value()
+module_dataframe = reactive.value()
 module_data_error = reactive.value()
 _ = module_data_error.set(False)
 module_groups_data = reactive.value()
@@ -40,6 +42,12 @@ module_groups_data_mins = reactive.value()
 module_groups_data_maxs = reactive.value()
 semesters_data_mins = reactive.value()
 semesters_data_maxs = reactive.value()
+
+# If the students request more modules in any group than the total capacity in
+# that group, we have to relax the constraint of assigning students their
+# preferred number of modules per group
+module_group_overrequest = reactive.value()
+_ = module_group_overrequest.set(False)
 
 student_module_rankings = reactive.value()
 module_rankings_error = reactive.value()
@@ -278,8 +286,8 @@ def _():
                             max=100,
                         )
                         ui.input_checkbox(
-                            "allow_lowest_preferences",
-                            "Allow allocation of lowest preferences",
+                            "validate_constraints",
+                            "Post-check module/credit constraints",
                             False,
                         )
                         ui.input_numeric(
@@ -349,7 +357,23 @@ def load_student_data():
         
         if len(missing_from_rankings) > 0 or len(missing_from_group_prefs) > 0:
             return
+        
 
+        # Do the students request more modules in a given group than the total capacity of that group?
+        warnings = []
+        module_space_check_results = check_sufficient_module_spaces(module_dataframe.get(), student_group_preferences.get())
+        if len(module_space_check_results) > 0:
+
+            module_group_overrequest.set(True)
+
+            for (group_id, total_requested_spaces, total_available_spaces) in module_space_check_results:
+                if (total_requested_spaces > total_available_spaces):
+                    warnings += [f"Students requested {total_requested_spaces} module spaces in group '{group_id}', but only {total_available_spaces} are available."]
+            warnings += ["Module allocation may still work, but some students will be assigned fewer modules in these groups than they requested."]
+            
+            ui.modal_show(create_error_modal("\n".join([f"<p>{w}</p>" for w in warnings])))
+
+    
         students, students_missing_ranks, students_missing_ids, missing_modules = (
             load_students(
                 student_module_rankings.get(),
@@ -358,7 +382,6 @@ def load_student_data():
             )
         )
         student_data.set(students)
-        print(student_data.get())
 
         errors = []
 
@@ -366,7 +389,7 @@ def load_student_data():
             errors += [f"Module '{m}' is missing from the Rankings file"]
 
         for s in students_missing_ranks:
-            errors += [f"Student with ID '{s}' is has module preference rankings missing in the Rankings file"]
+            errors += [f"Student with ID '{s}' has module preference rankings missing in the Rankings file"]
        
         if len(errors) > 0:
             reset_module_rankings_data()            
@@ -393,7 +416,7 @@ def _():
 @reactive.effect
 @reactive.event(input.reset_group_preferences_data)
 def _():
-    reset_module_rankings_data()
+    reset_group_preferences_data()
 def reset_group_preferences_data():
     student_group_preferences.set(None)
     student_group_preferences.unset()
@@ -428,9 +451,8 @@ def file_content():
         return
 
     try:
-        module_dataframe = load_module_data(Path(modules_file_info["datapath"]))
-        errors = validate_module_data(module_dataframe)
-
+        module_df = load_module_data(Path(modules_file_info["datapath"]))
+        errors = validate_module_data(module_df)
         if len(errors) > 0:
             ui.modal_show(
                 create_error_modal("\n".join([f"<p>{e}</p>" for e in errors]))
@@ -443,7 +465,8 @@ def file_content():
             semesters,
             required_modules_not_found,
             mutually_excluded_modules_not_found,
-        ) = get_formatted_module_data(module_dataframe)
+        ) = get_formatted_module_data(module_df)
+        module_dataframe.set(module_df)
         module_data.set(modules)
         module_groups_data.set(module_groups)
         semesters_data.set(semesters)
@@ -604,7 +627,7 @@ async def show_message():
                     r,
                     best_assignment,
                     input["early_stop_number"].get(),
-                    False,
+                    input["validate_constraints"].get(),
                     loaded_module_assignments,
                 )
                 p.set(r)
@@ -780,9 +803,7 @@ def run_assignments(
 
     result_messages = []
     for i in range(halt_after_n_assignments):
-        result_messages = module_assigner.run_assignment_round(
-            input["allow_lowest_preferences"].get()
-        )
+        result_messages = module_assigner.run_assignment_round()
 
     semester_minimum_satisfied = np.all(
         module_assigner.assignment_satisfies_minimum_credits_per_semester()
@@ -794,12 +815,19 @@ def run_assignments(
         module_assigner.get_assigned_credits_totals()
         == module_assigner._required_credits_per_student
     )
+    module_total_satisfied = np.all(
+        module_assigner.get_assigned_modules_totals()
+        == halt_after_n_assignments
+    )
+
+    print(module_assigner.get_assigned_modules_totals())
 
     if (
         semester_minimum_satisfied
         and group_minimum_satisfied
         and credit_total_satisfied
-    ) or (not check_constraints):
+        and module_total_satisfied
+    ) or (not check_constraints and module_total_satisfied):
         successful_assignments.append(module_assigner)
 
     best_assignment = previous_assignment
@@ -831,5 +859,5 @@ def run_assignments(
             if (current_mean_score >= previous_mean_score) and (current_overallocation_mean <= previous_overallocation_mean):
                 best_assignment = successful_assignments[0]
                 print(f"Updated best assignment {repetition} {previous_mean_score} {current_mean_score}")
-            print(current_mean_score, previous_mean_score, current_overallocation_mean, previous_overallocation_mean)
+            
     return best_assignment

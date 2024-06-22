@@ -127,6 +127,15 @@ class ModuleAssigner:
             np.ndarray: An array of integers representing the total numbers of credits assigned to each student
         """
         return np.sum(np.array(list(map(lambda a: np.sum(a, axis=1), self._student_assigned_credits))).T, axis=1)
+
+
+    def get_assigned_modules_totals(self):
+        """Get the total number of modules assigned to each student
+
+        Returns:
+            np.ndarray: An array of integers representing the total numbers of modules assigned to each student
+        """
+        return np.sum(np.array(list(map(lambda a: np.sum(a != 0, axis=1), self._student_assigned_credits))).T, axis=1)
     
 
     def get_assigned_modules(self, selected_student_id:str):
@@ -245,7 +254,7 @@ class ModuleAssigner:
     def log(self, message):
         print(message)
 
-    def run_assignment_round(self, allow_least_preferred_modules:bool = True):
+    def run_assignment_round(self):
         
 
         """Run one round of the assignment algorithm.
@@ -268,7 +277,7 @@ class ModuleAssigner:
        
         # Select a random order in which to let students "pick" a module
         choice_order = self._rs.permutation(self._n_students)
-
+        
         # self.log(assigned_credits_total)
         # self.log("|||||")
 
@@ -278,115 +287,129 @@ class ModuleAssigner:
         result_trace = []
         # For each participant in a random order
         for student_idx in choice_order:
-
+            considered_modules = []
             # If the current student has not got enough assigned module credits yet...
             if np.sum(assigned_credits_total[student_idx]) < self._required_credits_per_student:
 
                 modules_assigned = False
 
-                # Select the group of modules needing a new assignment for this participant.
-                # If we can't allocate a module in the preferred group, try the next most preferred group.
-                for group_idx in next_assignment_group_idxs[student_idx]:
+                # We may need to relax the constraint of not assigning students modules they preferentially request not to be assigned
+                for allow_preferentially_exclude_modules in [False, True]:
+                    
+                    # We may need to relax the maximum credits per group requirement
+                    for allow_excess_credits_per_group in [False, True]:
 
-                    # The module preference rankings of the current student for the current module group 
-                    current_student_group_module_prefs = self._student_module_grouped_preferences[group_idx][student_idx]
+                        # We may need to relax the constraint of not assigning students their least preferred modules in each group
+                        for allow_least_preferred_modules in [False, True]:
+                            # Select the group of modules needing a new assignment for this participant.
+                            # If we can't allocate a module in the preferred group, try the next most preferred group.
+                            for group_idx in next_assignment_group_idxs[student_idx]:
 
-                    # For each module in descending order of preference (i.e. increasing preference value)...
-                    for module_idx in np.argsort(current_student_group_module_prefs):
+                                if not modules_assigned:
 
-                        student_assigned_modules:list[Module] = self.get_assigned_modules(self._student_ids[student_idx])
+                                    # The module preference rankings of the current student for the current module group 
+                                    current_student_group_module_prefs = self._student_module_grouped_preferences[group_idx][student_idx]
 
-                        student_assigned_credits_per_semester = np.zeros(len(self._max_credits_per_semester))
-                        for m in student_assigned_modules:                       
-                            student_assigned_credits_per_semester[self._unique_semesters.index(m.semester)] += m.credits
+                                    # For each module in descending order of preference (i.e. increasing preference value)...
+                                    for module_idx in np.argsort(current_student_group_module_prefs):
 
-                        # Select this student's most preferred module in the current module group
-                        module:Module = self._grouped_modules[group_idx][module_idx]
-                        
-                        # Select the module and its requirements that have not yet been assigned to this student
-                        modules_to_assign = set(module.requirements + [module]).difference(student_assigned_modules)
+                                        student_assigned_modules:list[Module] = self.get_assigned_modules(self._student_ids[student_idx])
 
-                        if len(modules_to_assign) > 0:                    
+                                        student_assigned_credits_per_semester = np.zeros(len(self._max_credits_per_semester))
+                                        for m in student_assigned_modules:                       
+                                            student_assigned_credits_per_semester[self._unique_semesters.index(m.semester)] += m.credits
 
-                            requested_credits_per_group = np.zeros(len(self._max_credits_per_group))
-                            for m in modules_to_assign:
-                                requested_credits_per_group[self._unique_module_groups.index(m.group)] += m.credits
+                                        # Select this student's most preferred module in the current module group
+                                        module:Module = self._grouped_modules[group_idx][module_idx]
 
-                            requested_credits_per_semester = np.zeros(len(self._max_credits_per_semester))
-                            for m in modules_to_assign:                       
-                                requested_credits_per_semester[self._unique_semesters.index(m.semester)] += m.credits
-                            
-                            # If both the selected module and its requirements have space remaining for new students...
-                            modules_have_space_remaining = np.all([m.available_spaces > 0 for m in modules_to_assign])
-                            
-                            # If neither the selected module nor its requirements are mutually excluded by already assigned modules...                
-                            current_student_mutual_exclusions = [ex_m for m in student_assigned_modules for ex_m in m.mutual_exclusions]
-                            modules_not_excluded = set(modules_to_assign).isdisjoint(current_student_mutual_exclusions)
+                                        considered_modules += [module]
+                                        
+                                        # Select the module and its requirements that have not yet been assigned to this student
+                                        modules_to_assign = set(module.requirements + [module]).difference(student_assigned_modules)
 
-                            # If the selected module and its requirements are not in the list of modules specifically excluded by this student...
-                            modules_not_excluded_by_student = set(map(lambda m: m.module_id, modules_to_assign)).isdisjoint(self._students[student_idx].excluded_modules_by_id)
+                                        if len(modules_to_assign) > 0:                    
 
-                            # If the selected module and its requirements will not give the student too many credits in each group...
-                            requested_credits_not_too_many_per_group = np.all(assigned_credits_total[student_idx] + requested_credits_per_group <= self._max_credits_per_group)
+                                            requested_credits_per_group = np.zeros(len(self._max_credits_per_group))
+                                            for m in modules_to_assign:
+                                                requested_credits_per_group[self._unique_module_groups.index(m.group)] += m.credits
 
-                            # If the selected module and its requirements will not give the student too many credits in total, across all groups...
-                            requested_credits_not_too_many_total = np.sum(assigned_credits_total[student_idx] + requested_credits_per_group) <= self._required_credits_per_student
+                                            requested_credits_per_semester = np.zeros(len(self._max_credits_per_semester))
+                                            for m in modules_to_assign:                       
+                                                requested_credits_per_semester[self._unique_semesters.index(m.semester)] += m.credits
+                                            
+                                            # If both the selected module and its requirements have space remaining for new students...
+                                            modules_have_space_remaining = np.all([m.available_spaces > 0 for m in modules_to_assign])
+                                            
+                                            # If neither the selected module nor its requirements are mutually excluded by already assigned modules...                
+                                            current_student_mutual_exclusions = [ex_m for m in student_assigned_modules for ex_m in m.mutual_exclusions]
+                                            modules_not_excluded = set(modules_to_assign).isdisjoint(current_student_mutual_exclusions)
 
-                            # If the selected module and its requirements will not give the student too many credits in one semester...
-                            requested_credits_per_semester_not_too_many = np.all(student_assigned_credits_per_semester + requested_credits_per_semester <= self._max_credits_per_semester)
+                                            # If the selected module and its requirements are not in the list of modules specifically excluded by this student...
+                                            modules_not_excluded_by_student = set(map(lambda m: m.module_id, modules_to_assign)).isdisjoint(self._students[student_idx].excluded_modules_by_id) if not allow_preferentially_exclude_modules else True
 
-                            # If one of the selected modules has the lowest possible preference (i.e. largest preference rating) in its module group
-                            least_preferred_module_selected = np.any([current_student_group_module_prefs[self._grouped_modules[group_idx].index(m)] == np.max(current_student_group_module_prefs) for m in modules_to_assign])
-                            preferences_okay = (not least_preferred_module_selected) or (least_preferred_module_selected and allow_least_preferred_modules)            
+                                            # If the selected module and its requirements will not give the student too many credits in each group...
+                                            requested_credits_not_too_many_per_group = np.all(assigned_credits_total[student_idx] + requested_credits_per_group <= self._max_credits_per_group) if not allow_excess_credits_per_group else True
 
-                            # Keep track of how many excess requests (beyond module capacity) each module had during allocation, counting each student only once
-                            if not modules_have_space_remaining:
-                                if not m in requested_modules[self._students[student_idx]]:
-                                    self._module_spaces_excess_requests[m] = self._module_spaces_excess_requests[m] + 1
-                                    requested_modules[self._students[student_idx]] = requested_modules[self._students[student_idx]] + [m]
+                                            # If the selected module and its requirements will not give the student too many credits in total, across all groups...
+                                            requested_credits_not_too_many_total = np.sum(assigned_credits_total[student_idx] + requested_credits_per_group) <= self._required_credits_per_student
 
-                            # if not modules_have_space_remaining:
-                            #     self.log("Assignment pass failed: Requested modules have no spaces remaining")
-                            #     continue
+                                            # If the selected module and its requirements will not give the student too many credits in one semester...
+                                            requested_credits_per_semester_not_too_many = np.all(student_assigned_credits_per_semester + requested_credits_per_semester <= self._max_credits_per_semester)
 
-                            # if not modules_not_excluded:
-                            #     self.log("Assignment pass failed: Mutually excluded modules were requested")
-                            #     continue
+                                            # If one of the selected modules has the lowest possible preference (i.e. largest preference rating) in its module group
+                                            least_preferred_module_selected = np.any([current_student_group_module_prefs[self._grouped_modules[group_idx].index(m)] == np.max(current_student_group_module_prefs) for m in modules_to_assign])
+                                            preferences_okay = (not least_preferred_module_selected) or (least_preferred_module_selected and allow_least_preferred_modules)            
 
-                            # if not modules_not_excluded_by_student:
-                            #     self.log("Assignment pass failed: Student excluded modules were requested")
-                            #     continue
+                                            # Keep track of how many excess requests (beyond module capacity) each module had during allocation, counting each student only once
+                                            if not modules_have_space_remaining:
+                                                if not m in requested_modules[self._students[student_idx]]:
+                                                    self._module_spaces_excess_requests[m] = self._module_spaces_excess_requests[m] + 1
+                                                    requested_modules[self._students[student_idx]] = requested_modules[self._students[student_idx]] + [m]
 
-                            # if not requested_credits_not_too_many_per_group:
-                            #     self.log("Assignment pass failed: Requested modules exceeded per group credit maximum")
-                            #     continue
+                                            # if not modules_have_space_remaining:
+                                            #     self.log("Assignment pass failed: Requested modules have no spaces remaining")
+                                            #     continue
 
-                            # if not requested_credits_not_too_many_total:
-                            #     self.log("Assignment pass failed: Requested modules exceeded total credit maximum")
-                            #     continue
+                                            # if not modules_not_excluded:
+                                            #     self.log("Assignment pass failed: Mutually excluded modules were requested")
+                                            #     continue
 
-                            # if not requested_credits_per_semester_not_too_many:
-                            #     self.log("Assignment pass failed: Requested modules exceeded per semester credit maximum")
-                            #     continue
+                                            # if not modules_not_excluded_by_student:
+                                            #     self.log("Assignment pass failed: Student excluded modules were requested")
+                                            #     continue
 
-                            # if not preferences_okay:
-                            #     self.log("Assignment pass failed: Requested modules included lowest-ranked module for the current student")
-                            #     continue
+                                            # if not requested_credits_not_too_many_per_group:
+                                            #     self.log("Assignment pass failed: Requested modules exceeded per group credit maximum")
+                                            #     continue
+
+                                            # if not requested_credits_not_too_many_total:
+                                            #     self.log("Assignment pass failed: Requested modules exceeded total credit maximum")
+                                            #     continue
+
+                                            # if not requested_credits_per_semester_not_too_many:
+                                            #     self.log("Assignment pass failed: Requested modules exceeded per semester credit maximum")
+                                            #     continue
+
+                                            # if not preferences_okay:
+                                            #     self.log("Assignment pass failed: Requested modules included lowest-ranked module for the current student")
+                                            #     continue
 
 
-                            # Assign the module and its requirements to the student
-                            if modules_have_space_remaining and modules_not_excluded and modules_not_excluded_by_student and requested_credits_not_too_many_per_group and requested_credits_not_too_many_total and requested_credits_per_semester_not_too_many and preferences_okay:
-                                for m in modules_to_assign:
-                                    g_idx = self._unique_module_groups.index(m.group)
-                                    m_idx = self._grouped_modules[g_idx].index(m)                                    
-                                    self._student_assigned_credits[g_idx][student_idx][m_idx] = m.credits
-                                    m.available_spaces -= 1
-                                    #self._module_spaces_remaining[m] = self._module_spaces_remaining[m] - 1
-                                    #self._modules[self._modules.index(m)].available_spaces -= 1
-                                    assigned_credits_total[student_idx][g_idx] += m.credits
-                                    modules_assigned = True
-                                break
-                        
+                                            # Assign the module and its requirements to the student
+                                            if modules_have_space_remaining and modules_not_excluded and modules_not_excluded_by_student and requested_credits_not_too_many_per_group and requested_credits_not_too_many_total and requested_credits_per_semester_not_too_many and preferences_okay:
+                                                for m in modules_to_assign:
+                                                    g_idx = self._unique_module_groups.index(m.group)
+                                                    m_idx = self._grouped_modules[g_idx].index(m)                                    
+                                                    self._student_assigned_credits[g_idx][student_idx][m_idx] = m.credits
+                                                    m.available_spaces -= 1
+                                                    #self._module_spaces_remaining[m] = self._module_spaces_remaining[m] - 1
+                                                    #self._modules[self._modules.index(m)].available_spaces -= 1
+                                                    assigned_credits_total[student_idx][g_idx] += m.credits
+                                                    modules_assigned = True
+                                                    if(m.available_spaces < 0):
+                                                        print(m)
+                                                break
+                                    
                     if modules_assigned:
                         break
                     
@@ -405,6 +428,6 @@ class ModuleAssigner:
                                              requested_credits_not_too_many_total, 
                                              requested_credits_per_semester_not_too_many,
                                              preferences_okay]))]
-
+            #print(len(set(considered_modules)), set(considered_modules))
 
         return result_trace

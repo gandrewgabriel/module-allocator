@@ -111,7 +111,11 @@ def validate_module_rankings_data(data:pd.DataFrame):
     if ("student_id" in data.columns) and ("student_name" in data.columns):        
             for name in data.loc[(data['student_id'] == '') | pd.isna(data["student_id"]), 'student_name']:
                 errors += [f"Student {name} has no listed student ID"]
-
+            
+            duplicate_ids = data[data.duplicated('student_id')]['student_id'].unique()
+            if (len(duplicate_ids) > 0):
+                errors += [f"Student ID '{s_id}' is used more than once in the Rankings file" for s_id in duplicate_ids]
+                
     errors += get_replacement_character_error_messages(data)
 
     return errors 
@@ -127,9 +131,17 @@ def validate_module_group_preferences_data(data:pd.DataFrame):
             for name in data.loc[(data['student_id'] == '') | pd.isna(data["student_id"]), 'student_name']:
                 errors += [f"Student {name} has no listed student ID"]
 
+    duplicate_ids = data[data.duplicated('student_id')]['student_id'].unique()
+    if (len(duplicate_ids) > 0):
+        errors += [f"Student ID '{s_id}' is used more than once in the Group Preferences file" for s_id in duplicate_ids]
+                
+
     errors += get_replacement_character_error_messages(data)
 
     return errors 
+
+
+
 
 def load_module_rankings_data(module_preference_data_filepath:Path):
     return pd.read_csv(module_preference_data_filepath, encoding="utf-8", encoding_errors="replace")
@@ -150,6 +162,14 @@ def check_ranking_and_group_ids_match(module_rankings_data:pd.DataFrame, module_
     m1, m2 = find_non_matched_ids(module_rankings_data, module_group_preference_data)
 
     return m1, m2
+
+def check_sufficient_module_spaces(module_metadata:pd.DataFrame, module_group_preference_data:pd.DataFrame):
+    results = []
+    for group_id in module_metadata["module_group"].unique():
+        total_requested_spaces = module_group_preference_data[group_id].sum()
+        total_available_spaces = module_metadata[module_metadata["module_group"] == group_id]["capacity"].sum()
+        results += [(group_id, total_requested_spaces, total_available_spaces)]
+    return results
 
 def load_students(module_rankings_data:pd.DataFrame, module_group_preference_data:pd.DataFrame, modules:list[Module]):
     """Load the student preferences data from two csv files
