@@ -22,7 +22,9 @@ from data_loading import (
 from io import BytesIO
 from faicons import icon_svg
 
-APP_VERSION = "0.0.3"
+APP_VERSION = "0.1.1"
+
+BASE_RANDOM_SEED = 8194761
 
 MAX_SIZE = 50000
 ACCEPTED_FILETYPES = [".csv"]
@@ -279,6 +281,13 @@ def _():
                             "allow_lowest_preferences",
                             "Allow allocation of lowest preferences",
                             False,
+                        )
+                        ui.input_numeric(
+                            "custom_random_seed",
+                            "Random Seed",
+                            BASE_RANDOM_SEED,
+                            min=10000,
+                            max=999999999,
                         )
                         ui.input_numeric(
                             "assignment_runs",
@@ -760,8 +769,10 @@ def run_assignments(
                 ],
             )
         ),
-        repetition * 123,
+        input["custom_random_seed"].get() + repetition * input["custom_random_seed"].get() + 1,
     )
+
+    print(f"Module assigner seed: {module_assigner._random_seed}")
 
     print("Loading pre-existing module assignments")
     if not loaded_module_assignments is None:
@@ -803,18 +814,15 @@ def run_assignments(
 
             previous_mean_score = np.mean(previous_scores)
             current_mean_score = np.mean(current_scores)
-            previous_min_score = np.min(previous_scores)
-            current_min_score = np.min(current_scores)
+            # previous_min_score = np.min(previous_scores)
+            # current_min_score = np.min(current_scores)
 
             best_assignment = (
                 successful_assignments[0]
                 if (current_mean_score >= previous_mean_score)
-                and (current_min_score >= previous_min_score)
                 else best_assignment
             )
-            if (current_mean_score >= previous_mean_score) and (
-                current_min_score >= previous_min_score
-            ):
+            if (current_mean_score >= previous_mean_score):
                 print(
                     f"Updated best assignment {repetition} {previous_mean_score} {current_mean_score}"
                 )

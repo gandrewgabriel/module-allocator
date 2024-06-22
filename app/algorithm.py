@@ -69,6 +69,7 @@ class ModuleAssigner:
         self._module_spaces_excess_requests = dict(zip(self._modules, [0 for _ in range(len(self._modules))]))
 
         # Random state for choosing student permutations
+        self._random_seed = random_seed
         self._rs = np.random.RandomState(random_seed)
 
     def set_loaded_module_assignments(self, data:pd.DataFrame):
