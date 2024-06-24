@@ -829,7 +829,6 @@ def run_assignments(
         semester_minimum_satisfied
         and group_minimum_satisfied
         and credit_total_satisfied
-        and module_total_satisfied
     ) or (not check_constraints):
         successful_assignments.append(module_assigner)
 
