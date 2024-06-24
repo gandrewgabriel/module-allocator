@@ -23,7 +23,7 @@ from data_loading import (
 from io import BytesIO
 from faicons import icon_svg
 
-APP_VERSION = "0.1.5"
+APP_VERSION = "0.1.6"
 
 BASE_RANDOM_SEED = 8194761
 
