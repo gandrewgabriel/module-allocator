@@ -23,7 +23,7 @@ from data_loading import (
 from io import BytesIO
 from faicons import icon_svg
 
-APP_VERSION = "0.1.4"
+APP_VERSION = "0.1.5"
 
 BASE_RANDOM_SEED = 8194761
 
@@ -570,6 +570,8 @@ def file_content():
             )
             student_previous_module_allocations_error.set(True)
             return
+        
+        student_previous_assignments_data["student_id"] = student_previous_assignments_data["student_id"].astype(str)
         student_previous_module_allocations.set(student_previous_assignments_data)
         student_previous_module_allocations_error.set(False)
         reload_module_allocation_settings()
@@ -798,6 +800,7 @@ def run_assignments(
     print(f"Module assigner seed: {module_assigner._random_seed}")
 
     print("Loading pre-existing module assignments")
+    print(loaded_module_assignments)
     if not loaded_module_assignments is None:
         module_assigner.set_loaded_module_assignments(loaded_module_assignments)
 
@@ -827,7 +830,7 @@ def run_assignments(
         and group_minimum_satisfied
         and credit_total_satisfied
         and module_total_satisfied
-    ) or (not check_constraints and module_total_satisfied):
+    ) or (not check_constraints):
         successful_assignments.append(module_assigner)
 
     best_assignment = previous_assignment
