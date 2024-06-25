@@ -170,6 +170,12 @@ class ModuleAssigner:
 
         return pd.concat([names_ids_df, student_module_group_preferences_df, module_allocations_df], axis=1)
     
+    def get_students_list(self):
+        student_names = [s.name for s in self._students]
+        student_ids = [s.id for s in self._students]
+        names_ids_df = pd.DataFrame({"student_name":student_names, "student_id":student_ids})
+        return names_ids_df
+
     def get_assigned_module_students(self):
         module_ids = []
         assigned_student_dfs = []
@@ -241,7 +247,14 @@ class ModuleAssigner:
         Returns:
             boolean: True iff the assignment of students to modules meets the minimum number of credits per module group for all students
         """
-        return np.array(list(map(lambda a: np.sum(a, axis=1), self._student_assigned_credits))).T >= self._min_credits_per_group
+        return np.array(list(map(lambda a: np.sum(a, axis=1), self._student_assigned_credits))).T >= self._min_credits_per_group, self._unique_module_groups
+    
+    def assignment_satisfies_maximum_credits_per_group(self):
+        """
+        Returns:
+            boolean: True iff the assignment of students to modules meets the maximum number of credits per module group for all students
+        """
+        return np.array(list(map(lambda a: np.sum(a, axis=1), self._student_assigned_credits))).T <= self._max_credits_per_group, self._unique_module_groups
     
     def assignment_satisfies_minimum_credits_per_semester(self):
         """        
@@ -249,7 +262,16 @@ class ModuleAssigner:
             boolean: True iff the assignment of students to modules meets the minimum number of credits per semester for all students
         """
         credits_per_semester = np.stack([np.sum(np.stack([np.sum(np.stack([self._student_assigned_credits[g_idx][:, m_idx] for m_idx, m in enumerate(g) if m.semester == s]), axis=0) for g_idx, g in enumerate(self._grouped_modules)]), axis=0) for s in self._unique_semesters]).T
-        return credits_per_semester >= self._min_credits_per_semester
+        return credits_per_semester >= self._min_credits_per_semester, self._unique_semesters
+
+    def assignment_satisfies_maximum_credits_per_semester(self):
+        """        
+        Returns:
+            boolean: True iff the assignment of students to modules meets the maximum number of credits per semester for all students
+        """
+        credits_per_semester = np.stack([np.sum(np.stack([np.sum(np.stack([self._student_assigned_credits[g_idx][:, m_idx] for m_idx, m in enumerate(g) if m.semester == s]), axis=0) for g_idx, g in enumerate(self._grouped_modules)]), axis=0) for s in self._unique_semesters]).T
+        return credits_per_semester <= self._max_credits_per_semester, self._unique_semesters
+
 
     def log(self, message):
         print(message)
@@ -272,10 +294,22 @@ class ModuleAssigner:
         # How many credits has each student been assigned in each module group
         assigned_credits_total = np.array(list(map(lambda a: np.sum(a, axis=1), self._student_assigned_credits))).T
 
+        # Which module group is furthest from satisfying the minimum number of credits for that group
+        minimum_group_difference = assigned_credits_total - np.array(self._min_credits_per_group)[None, :]
+        min_group_order = np.argsort(minimum_group_difference, axis=1, kind="stable")    
+
         # Which module group is furthest from satisfying the students' preferred number of credits for that group
-        next_assignment_group_idxs = np.argsort(assigned_credits_total - self._student_module_group_credit_preferences, axis=1)
-       
-        # Select a random order in which to let students "pick" a module
+        preference_ranked_group_order =  np.argsort(assigned_credits_total - self._student_module_group_credit_preferences, axis=1, kind="stable")
+        
+        # Assign groups in order such that groups not satisfying the minimum number of credits are assigned first, and
+        # if all groups satisfy the minimum number of credits, fill the most preferred groups for each participant first
+        
+        if(np.any(minimum_group_difference < 0)):
+            next_assignment_group_idxs = np.tile(min_group_order[0], (min_group_order.shape[0], 1)) 
+        else:
+            next_assignment_group_idxs = preference_ranked_group_order
+        
+        # Select a random order in which to let students "pick" a module.
         choice_order = self._rs.permutation(self._n_students)
         
         # self.log(assigned_credits_total)

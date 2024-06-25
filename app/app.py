@@ -23,7 +23,7 @@ from data_loading import (
 from io import BytesIO
 from faicons import icon_svg
 
-APP_VERSION = "0.1.6"
+APP_VERSION = "0.2.0"
 
 BASE_RANDOM_SEED = 8194761
 
@@ -675,6 +675,34 @@ def download():
                 f"module_assignment_summary.csv", b_assignment_summary.getvalue()
             )
 
+            #
+            best_module_assigner = best_assignment_module_assigner_data.get()
+            semester_min_credits_satisfied, semester_labels = best_module_assigner.assignment_satisfies_minimum_credits_per_semester()
+            df_semester_min = pd.DataFrame(semester_min_credits_satisfied, columns=[f"min_credits_per_semester_satisfied_{l}" for l in semester_labels])
+
+            semester_max_credits_satisfied, semester_labels = best_module_assigner.assignment_satisfies_maximum_credits_per_semester()
+            df_semester_max = pd.DataFrame(semester_max_credits_satisfied, columns=[f"max_credits_per_semester_not_exceeded_{l}" for l in semester_labels])
+
+            group_min_credits_satisfield, group_labels = best_module_assigner.assignment_satisfies_minimum_credits_per_group()
+            df_group_min = pd.DataFrame(group_min_credits_satisfield, columns=[f"min_credits_per_group_satisfied_{l}" for l in group_labels])
+
+            group_max_credits_satisfield, group_labels = best_module_assigner.assignment_satisfies_maximum_credits_per_group()
+            df_group_max = pd.DataFrame(group_max_credits_satisfield, columns=[f"max_credits_per_group_not_exceeded_{l}" for l in group_labels])
+
+            total_credits_satisfied = best_module_assigner.get_assigned_credits_totals() == best_module_assigner._required_credits_per_student
+            df_total_credits = pd.DataFrame(total_credits_satisfied, columns=["required_credits_total_satisfied"])
+
+            student_list_df = best_module_assigner.get_students_list()
+
+            constraints_df = pd.concat([student_list_df, df_semester_min, df_semester_max, df_group_min, df_group_max, df_total_credits], axis=1)
+            b_constraints_summary = BytesIO()
+            constraints_df.to_csv(
+                b_constraints_summary, index=False, header=True
+            )
+            zf.writestr(
+                f"constraints_summary.csv", b_constraints_summary.getvalue()
+            )
+
             # Write data on excess module requests to an csv file
             b_over_requested_modules = BytesIO()
             excess_module_requests_data.get().to_csv(
@@ -800,7 +828,6 @@ def run_assignments(
     print(f"Module assigner seed: {module_assigner._random_seed}")
 
     print("Loading pre-existing module assignments")
-    print(loaded_module_assignments)
     if not loaded_module_assignments is None:
         module_assigner.set_loaded_module_assignments(loaded_module_assignments)
 
@@ -808,23 +835,18 @@ def run_assignments(
     for i in range(halt_after_n_assignments):
         result_messages = module_assigner.run_assignment_round()
 
-    semester_minimum_satisfied = np.all(
-        module_assigner.assignment_satisfies_minimum_credits_per_semester()
-    )
-    group_minimum_satisfied = np.all(
-        module_assigner.assignment_satisfies_minimum_credits_per_group()
-    )
-    credit_total_satisfied = np.all(
-        module_assigner.get_assigned_credits_totals()
-        == module_assigner._required_credits_per_student
-    )
-    module_total_satisfied = np.all(
-        module_assigner.get_assigned_modules_totals()
-        == halt_after_n_assignments
-    )
 
-    print(module_assigner.get_assigned_modules_totals())
+    semester_min_credits_satisfied, semester_labels = module_assigner.assignment_satisfies_minimum_credits_per_semester()
+    semester_minimum_satisfied = np.all(semester_min_credits_satisfied)
 
+    group_min_credits_satisfield, group_labels = module_assigner.assignment_satisfies_minimum_credits_per_group()
+    group_minimum_satisfied = np.all(group_min_credits_satisfield)
+
+    total_credits_satisfied = module_assigner.get_assigned_credits_totals() == module_assigner._required_credits_per_student
+    credit_total_satisfied = np.all(total_credits_satisfied)
+
+    print(f"semester_minimum_satisfied = {semester_minimum_satisfied} | group_minimum_satisfied = {group_minimum_satisfied} | credit_total_satisfied = {credit_total_satisfied}")
+ 
     if (
         semester_minimum_satisfied
         and group_minimum_satisfied
